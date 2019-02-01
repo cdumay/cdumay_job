@@ -2,7 +2,7 @@
 
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-A library follow a job execution using validation and checks steps.
+A library to follow job execution using validation and checks steps.
 
 ## Quickstart
 
