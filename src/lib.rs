@@ -104,7 +104,6 @@
 //!     println!("{}", serde_json::to_string_pretty(&task.execute(None)).unwrap());
 //! }
 //! ```
-//! ```
 //! **Log Output (using RUST_LOG=debug)**
 //! ```
 //! [2019-02-01T16:02:04Z DEBUG cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - PreRun

@@ -106,16 +106,15 @@ fn main() {
     println!("{}", serde_json::to_string_pretty(&task.execute(None)).unwrap());
 }
 ```
-```rust
 **Log Output (using RUST_LOG=debug)**
-```
+```rust
 [2019-02-01T16:02:04Z DEBUG cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - PreRun
 [2019-02-01T16:02:04Z DEBUG cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - SetStatus: status updated 'PENDING' -> 'RUNNING'
 [2019-02-01T16:02:04Z DEBUG cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - Run: Result: Ok(0, stdout: None)
 [2019-02-01T16:02:04Z DEBUG cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - PostRun: Result: Ok(0, stdout: Some("Hello Cedric from cdumay-desk"))
 [2019-02-01T16:02:04Z DEBUG cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - SetStatus: status updated 'RUNNING' -> 'SUCCESS'
 [2019-02-01T16:02:04Z INFO  cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - Success: Result: Ok(0, stdout: Some("Hello Cedric from cdumay-desk"))
-```rust
+```
 **Result**
 ```json
 {
