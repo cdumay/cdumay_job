@@ -1,14 +1,13 @@
-use cdumay_error::{ErrorRepr, ErrorReprBuilder};
-use cdumay_error::generic::GenericErrors;
-use cdumay_result::{ResultProps, ResultRepr};
-use crate::messages::MessageRepr;
-use crate::status::Status;
-use crate::task::Task;
-use serde_value::Value;
 use std::ops::Add;
 
+use cdumay_error::{ErrorBuilder, ErrorRepr, GenericErrors};
+use cdumay_result::{ResultBuilder, ResultRepr};
+use serde_value::Value;
+
+use crate::{KserMessage, MessageRepr, Status, TaskExec, TaskInfo};
+
 pub trait Operation {
-    type TasksItems: Task;
+    type TasksItems: TaskExec;
 
     /***********************************************************************************************
     // Search a value using message().params(), message().result() & self.result()
@@ -16,9 +15,9 @@ pub trait Operation {
     fn search_data(&self, key: &str) -> Option<Value> {
         match self.message().params().get(key) {
             Some(value) => Some(value.clone()),
-            _ => match self.message().result().retval().get(key) {
+            _ => match self.message().result().retval.get(key) {
                 Some(value) => Some(value.clone()),
-                _ => match self.result().retval().get(key) {
+                _ => match self.result().retval.get(key) {
                     Some(value) => Some(value.clone()),
                     _ => None,
                 }
@@ -39,7 +38,7 @@ pub trait Operation {
                 for attr in required_fields {
                     if self.message().params().get(attr) == None {
                         return Err(
-                            ErrorReprBuilder::new(GenericErrors::VALIDATION_ERROR)
+                            ErrorBuilder::from(GenericErrors::VALIDATION_ERROR)
                                 .message(format!("required field '{}' not set!", attr))
                                 .build()
                         );
@@ -224,12 +223,12 @@ pub trait Operation {
             },
             None => match self.tasks().len() > 0 {
                 true => self.tasks()[0].send(result),
-                false => Ok({
-                    let mut res = ResultRepr::from(&self.message());
-                    *res.retcode_mut() = 1;
-                    *res.stderr_mut() = Some("Nothing to do, empty operation !".to_string());
-                    res
-                })
+                false => Ok(
+                    ResultBuilder::from(&self.message())
+                        .retcode(1)
+                        .stderr("Nothing to do, empty operation !".to_string())
+                        .build()
+                )
             }
         }
     }

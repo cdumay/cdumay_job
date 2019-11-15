@@ -1,21 +1,32 @@
-use cdumay_error::generic::GenericErrors;
-use cdumay_error::{ErrorRepr, ErrorReprBuilder};
-use cdumay_result::{ResultProps, ResultRepr};
-use crate::messages::MessageRepr;
-use crate::status::Status;
-use serde_value::Value;
 use std::ops::Add;
 
-pub trait Task {
+use cdumay_error::{ErrorBuilder, ErrorRepr, GenericErrors};
+use cdumay_result::ResultRepr;
+use serde_value::Value;
+
+use crate::{KserMessage, MessageRepr, Status};
+
+pub trait TaskInfo {
+    fn new(message: &MessageRepr, result: Option<ResultRepr>) -> Self;
+    fn path() -> String;
+    fn status(&self) -> Status;
+    fn status_mut(&mut self) -> &mut Status;
+    fn message(&self) -> MessageRepr;
+    fn message_mut(&mut self) -> &mut MessageRepr;
+    fn result(&self) -> ResultRepr;
+    fn result_mut(&mut self) -> &mut ResultRepr;
+}
+
+pub trait TaskExec: TaskInfo {
     /***********************************************************************************************
     // Search a value using message().params(), message().result() & self.result()
     */
     fn search_data(&self, key: &str) -> Option<Value> {
         match self.message().params().get(key) {
             Some(value) => Some(value.clone()),
-            _ => match self.message().result().retval().get(key) {
+            _ => match self.message().result().retval.get(key) {
                 Some(value) => Some(value.clone()),
-                _ => match self.result().retval().get(key) {
+                _ => match self.result().retval.get(key) {
                     Some(value) => Some(value.clone()),
                     _ => None,
                 }
@@ -36,7 +47,7 @@ pub trait Task {
                 for attr in required_fields {
                     if self.message().params().get(attr) == None {
                         return Err(
-                            ErrorReprBuilder::new(GenericErrors::VALIDATION_ERROR)
+                            ErrorBuilder::from(GenericErrors::VALIDATION_ERROR)
                                 .message(format!("required field '{}' not set!", attr))
                                 .build()
                         );
@@ -174,14 +185,4 @@ pub trait Task {
     fn finalize(&self) -> Result<ResultRepr, ErrorRepr> {
         Ok(ResultRepr::from(&self.message()))
     }
-
-    // to implement: constructor & property getters / setters
-    fn new(message: &MessageRepr, result: Option<ResultRepr>) -> Self;
-    fn status(&self) -> Status;
-    fn status_mut(&mut self) -> &mut Status;
-
-    fn message(&self) -> MessageRepr;
-    fn message_mut(&mut self) -> &mut MessageRepr;
-    fn result(&self) -> ResultRepr;
-    fn result_mut(&mut self) -> &mut ResultRepr;
 }
