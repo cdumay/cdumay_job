@@ -34,7 +34,7 @@
 //! use std::collections::HashMap;
 //!
 //! use cdumay_error::ErrorRepr;
-//! use cdumay_job::{KserMessage, MessageRepr, Status, TaskExec, TaskInfo};
+//! use cdumay_job::{Message, MessageRepr, Status, TaskExec, TaskInfo};
 //! use cdumay_result::{ResultBuilder, ResultRepr};
 //! use serde_value::Value;
 //!
@@ -148,7 +148,7 @@ extern crate serde_value;
 extern crate uuid;
 extern crate core;
 
-pub use messages::{KserMessage, MessageRepr};
+pub use messages::{Message, MessageRepr};
 pub use status::Status;
 pub use task::{TaskExec, TaskInfo};
 

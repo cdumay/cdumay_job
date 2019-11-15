@@ -4,7 +4,7 @@ use cdumay_error::{ErrorBuilder, ErrorRepr, GenericErrors};
 use cdumay_result::{ResultBuilder, ResultRepr};
 use serde_value::Value;
 
-use crate::{KserMessage, MessageRepr, Status, TaskExec, TaskInfo};
+use crate::{Message, MessageRepr, Status, TaskExec, TaskInfo};
 
 pub trait Operation {
     type TasksItems: TaskExec;

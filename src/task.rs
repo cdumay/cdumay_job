@@ -4,7 +4,7 @@ use cdumay_error::{ErrorBuilder, ErrorRepr, GenericErrors};
 use cdumay_result::ResultRepr;
 use serde_value::Value;
 
-use crate::{KserMessage, MessageRepr, Status};
+use crate::{Message, MessageRepr, Status};
 
 pub trait TaskInfo {
     fn new(message: &MessageRepr, result: Option<ResultRepr>) -> Self;

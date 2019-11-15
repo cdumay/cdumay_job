@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use cdumay_result::{ResultBuilder, ResultRepr};
 use serde_value::Value;
 
-pub trait KserMessage {
+pub trait Message {
     fn uuid(&self) -> uuid::Uuid;
     fn entrypoint(&self) -> String;
     fn metadata(&self) -> HashMap<String, Value>;
@@ -38,7 +38,7 @@ impl MessageRepr {
     pub fn result_mut(&mut self) -> &mut ResultRepr { &mut self.result }
 }
 
-impl KserMessage for MessageRepr {
+impl Message for MessageRepr {
     fn uuid(&self) -> uuid::Uuid { self.uuid.clone() }
     fn entrypoint(&self) -> String { self.entrypoint.clone() }
     fn metadata(&self) -> HashMap<String, Value> { self.metadata.clone() }
