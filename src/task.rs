@@ -7,7 +7,6 @@ use serde_value::Value;
 use crate::{Message, MessageRepr, Status};
 
 pub trait TaskInfo {
-    fn entrypoint() -> String { Self::path() }
     fn path() -> String;
     fn status(&self) -> Status;
     fn status_mut(&mut self) -> &mut Status;
@@ -18,6 +17,7 @@ pub trait TaskInfo {
 }
 
 pub trait TaskExec: TaskInfo {
+    fn entrypoint() -> String { Self::path() }
     /***********************************************************************************************
     // Search a value using message().params(), message().result() & self.result()
     */
