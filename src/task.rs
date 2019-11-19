@@ -7,7 +7,6 @@ use serde_value::Value;
 use crate::{Message, MessageRepr, Status};
 
 pub trait TaskInfo {
-    fn new(message: &MessageRepr, result: Option<ResultRepr>) -> Self;
     fn path() -> String;
     fn status(&self) -> Status;
     fn status_mut(&mut self) -> &mut Status;
