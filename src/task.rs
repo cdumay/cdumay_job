@@ -7,6 +7,7 @@ use serde_value::Value;
 use crate::{Message, MessageRepr, Status};
 
 pub trait TaskInfo {
+    fn entrypoint() -> String { Self::path() }
     fn path() -> String;
     fn status(&self) -> Status;
     fn status_mut(&mut self) -> &mut Status;
@@ -61,7 +62,7 @@ pub trait TaskExec: TaskInfo {
     */
     fn label(&self, action: Option<&str>) -> String {
         format!(
-            "{}[{}]{}", self.message().entrypoint(), self.message().uuid(), match action {
+            "{}[{}]{}", Self::entrypoint(), self.message().uuid(), match action {
                 Some(data) => format!(" - {}", data),
                 None => String::new()
             }
