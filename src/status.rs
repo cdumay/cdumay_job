@@ -1,6 +1,6 @@
 use core::fmt;
 
-use serde_value::Value;
+use cdumay_core::Value;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Status {

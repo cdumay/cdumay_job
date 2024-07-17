@@ -1,15 +1,17 @@
 [package]
 name = "cdumay_job"
-version = "0.1.1"
+version = "0.3.0"
+
 authors = ["Cédric Dumay <cedric.dumay@gmail.com>"]
-license = "MIT"
-readme = "README.md"
-documentation = "https://docs.rs/cdumay_job"
-repository = "https://github.com/cdumay/rust-cdumay_job"
-homepage =  "https://github.com/cdumay/rust-cdumay_job"
-description = "A library to follow job execution using validation and checks steps."
-keywords = ["Error", "serde"]
 categories = ["caching", "data-structures", "encoding"]
+description = "A library to follow job execution using validation and checks steps."
+documentation = "https://docs.rs/cdumay_job"
+edition = "2021"
+homepage = "https://github.com/cdumay/rust-cdumay_job"
+keywords = ["Error", "serde"]
+license = "BSD-3-Clause"
+readme = "README.md"
+repository = "https://github.com/cdumay/rust-cdumay_job"
 
 [badges]
 gitlab = { repository = "cdumay/rust-cdumay_job" }
@@ -17,14 +19,13 @@ travis-ci = { repository = "cdumay/rust-cdumay_job" }
 maintenance = { status = "as-is" }
 
 [dependencies]
-cdumay_error = { git = "https://github.com/cdumay/rust-cdumay_errors" }
+cdumay_core = { git = "https://github.com/cdumay/rust-cdumay_core" }
+cdumay_error = { git = "https://github.com/cdumay/rust-cdumay_error" }
 cdumay_result = { git = "https://github.com/cdumay/rust-cdumay_result" }
-futures = "0.1"
-hostname = "0.1"
+futures = "0.3.30"
+hostname = "0.4.0"
 log = "0.4"
-rand = "0.6"
-serde = "1.0"
-serde-value = "0.6"
-serde_derive = "1.0"
-serde_json = "1.0"
-uuid = { version = "0.6", features = ["v4", "serde"] }
+rand = "0.8.5"
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.117"
+uuid = { version = "1.10.0", features = ["v4", "serde"] }

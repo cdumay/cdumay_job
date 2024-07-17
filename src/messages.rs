@@ -1,72 +1,66 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
-use cdumay_result::{ResultBuilder, ResultRepr};
-use serde_value::Value;
+use cdumay_result::{Result, ResultBuilder};
+use cdumay_core::Value;
 
-pub trait Message {
+pub trait MessageInfo {
     fn uuid(&self) -> uuid::Uuid;
     fn entrypoint(&self) -> String;
-    fn metadata(&self) -> HashMap<String, Value>;
-    fn params(&self) -> HashMap<String, Value>;
-    fn result(&self) -> ResultRepr;
+    fn metadata(&self) -> BTreeMap<String, Value>;
+    fn params(&self) -> BTreeMap<String, Value>;
+    fn result(&self) -> Result;
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct MessageRepr {
+#[derive(Debug, Clone)]
+pub struct Message {
     entrypoint: String,
-    metadata: HashMap<String, Value>,
-    params: HashMap<String, Value>,
-    result: ResultRepr,
+    metadata: BTreeMap<String, Value>,
+    params: BTreeMap<String, Value>,
+    result: Result,
     uuid: uuid::Uuid,
 }
 
-impl MessageRepr {
-    pub fn new(uuid: Option<uuid::Uuid>, entrypoint: &str, params: Option<HashMap<String, Value>>, result: Option<ResultRepr>, metadata: Option<HashMap<String, Value>>) -> MessageRepr {
+impl Message {
+    pub fn new(uuid: Option<uuid::Uuid>, entrypoint: &str, params: Option<BTreeMap<String, Value>>, result: Option<Result>, metadata: Option<BTreeMap<String, Value>>) -> Message {
         let muuid = uuid.unwrap_or(uuid::Uuid::new_v4());
-        MessageRepr {
+        Message {
             entrypoint: entrypoint.to_string(),
-            params: params.unwrap_or(HashMap::new()),
-            metadata: metadata.unwrap_or(HashMap::new()),
-            result: result.unwrap_or(ResultBuilder::default().uuid(muuid).build()),
+            params: params.unwrap_or(BTreeMap::new()),
+            metadata: metadata.unwrap_or(BTreeMap::new()),
+            result: result.unwrap_or(ResultBuilder::default().uuid(muuid.into()).build()),
             uuid: muuid,
         }
     }
     pub fn uuid_mut(&mut self) -> &mut uuid::Uuid { &mut self.uuid }
     pub fn entrypoint_mut(&mut self) -> &mut String { &mut self.entrypoint }
-    pub fn metadata_mut(&mut self) -> &mut HashMap<String, Value> { &mut self.metadata }
-    pub fn params_mut(&mut self) -> &mut HashMap<String, Value> { &mut self.params }
-    pub fn result_mut(&mut self) -> &mut ResultRepr { &mut self.result }
+    pub fn metadata_mut(&mut self) -> &mut BTreeMap<String, Value> { &mut self.metadata }
+    pub fn params_mut(&mut self) -> &mut BTreeMap<String, Value> { &mut self.params }
+    pub fn result_mut(&mut self) -> &mut Result { &mut self.result }
 }
 
-impl Message for MessageRepr {
+impl MessageInfo for Message {
     fn uuid(&self) -> uuid::Uuid { self.uuid.clone() }
     fn entrypoint(&self) -> String { self.entrypoint.clone() }
-    fn metadata(&self) -> HashMap<String, Value> { self.metadata.clone() }
-    fn params(&self) -> HashMap<String, Value> { self.params.clone() }
-    fn result(&self) -> ResultRepr { self.result.clone() }
+    fn metadata(&self) -> BTreeMap<String, Value> { self.metadata.clone() }
+    fn params(&self) -> BTreeMap<String, Value> { self.params.clone() }
+    fn result(&self) -> Result { self.result.clone() }
 }
 
-impl Default for MessageRepr {
-    fn default() -> MessageRepr {
+impl Default for Message {
+    fn default() -> Message {
         let uuid = uuid::Uuid::new_v4();
-        MessageRepr {
+        Message {
             uuid,
             entrypoint: String::new(),
-            metadata: HashMap::new(),
-            params: HashMap::new(),
-            result: ResultBuilder::default().uuid(uuid).build(),
+            metadata: BTreeMap::new(),
+            params: BTreeMap::new(),
+            result: ResultBuilder::default().uuid(uuid.into()).build(),
         }
     }
 }
 
-impl From<&MessageRepr> for ResultBuilder {
-    fn from(msg: &MessageRepr) -> ResultBuilder {
-        ResultBuilder::default().uuid(msg.uuid())
-    }
-}
-
-impl From<&MessageRepr> for ResultRepr {
-    fn from(msg: &MessageRepr) -> ResultRepr {
-        ResultBuilder::from(msg).build()
+impl From<Message> for ResultBuilder {
+    fn from(msg: Message) -> ResultBuilder {
+        ResultBuilder::default().uuid(msg.uuid().into())
     }
 }
