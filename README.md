@@ -1,57 +1,53 @@
 # cdumay_job
 
-[![Build Status](https://travis-ci.org/cdumay/rust-cdumay_job.svg?branch=master)](https://travis-ci.org/cdumay/rust-cdumay_job)
-[![Latest version](https://img.shields.io/crates/v/cdumay_job.svg)](https://crates.io/crates/cdumay_job)
-[![Documentation](https://docs.rs/cdumay_job/badge.svg)](https://docs.rs/cdumay_job)
-![License](https://img.shields.io/crates/l/cdumay_job.svg)
+[![License: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue)](./LICENSE)
+[![cdumay_job on crates.io](https://img.shields.io/crates/v/cdumay_job)](https://crates.io/crates/cdumay_job)
+[![cdumay_job on docs.rs](https://docs.rs/cdumay_job/badge.svg)](https://docs.rs/cdumay_job)
+[![Source Code Repository](https://img.shields.io/badge/Code-On%20GitHub-blue?logo=GitHub)](https://github.com/cdumay/cdumay_job)
 
 A library to follow job execution using validation and checks steps.
 
-## Quickstart
+### Quickstart
 
 _Cargo.toml_:
 ```toml
 [dependencies]
-cdumay_error = { git = "https://github.com/cdumay/rust-cdumay_errors" }
-cdumay_result = { git = "https://github.com/cdumay/rust-cdumay_result" }
-cdumay_job = { git = "https://github.com/cdumay/rust-cdumay_job" }
+cdumay_error = "1.0"
+cdumay_result = "1.0"
+cdumay_job = "1.0"
 serde = "1.0"
-serde_derive = "1.0"
 serde_json = "1.0"
-serde-value = "0.6"
-env_logger = "0.7"
-hostname = "0.2"
+serde-value = "0.7"
+env_logger = "0.11"
+hostname = "0.4"
 ```
 
 _main.rs_:
 ```rust
-extern crate cdumay_error;
-extern crate cdumay_job;
-extern crate cdumay_result;
-extern crate env_logger;
-extern crate hostname;
-extern crate serde_json;
-extern crate serde_value;
-
-use std::collections::HashMap;
-
-use cdumay_error::ErrorRepr;
-use cdumay_job::{Message, MessageRepr, Status, TaskExec, TaskInfo};
-use cdumay_result::{ResultBuilder, ResultRepr};
+use cdumay_error::Error;
+use cdumay_job::{Message, MessageBuilder, Status, TaskExec, TaskInfo};
+use cdumay_result::{Result, ResultBuilder};
 use serde_value::Value;
+use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize)]
+pub struct Params {
+    user: String
+}
 
 #[derive(Clone)]
 pub struct Hello {
-    message: MessageRepr,
+    message: Message,
     status: Status,
-    result: ResultRepr,
+    result: Result,
 }
 
 impl TaskInfo for Hello {
-    fn new(message: &MessageRepr, result: Option<ResultRepr>) -> Hello {
+    fn new(msg: &Message, result: Option<Result>) -> Hello {
         Hello {
-            message: message.clone(),
-            result: result.unwrap_or(message.result().clone()),
+            message: msg.clone(),
+            result: result.unwrap_or(msg.result.clone()),
             status: Status::Pending,
         }
     }
@@ -60,54 +56,47 @@ impl TaskInfo for Hello {
     fn status(&self) -> Status { self.status.clone() }
     fn status_mut(&mut self) -> &mut Status { &mut self.status }
 
-    fn message(&self) -> MessageRepr { self.message.clone() }
-    fn message_mut(&mut self) -> &mut MessageRepr { &mut self.message }
-    fn result(&self) -> ResultRepr { self.result.clone() }
-    fn result_mut(&mut self) -> &mut ResultRepr { &mut self.result }
+    fn message(&self) -> Message { self.message.clone() }
+    fn message_mut(&mut self) -> &mut Message { &mut self.message }
+    fn result(&self) -> Result { self.result.clone() }
+    fn result_mut(&mut self) -> &mut Result { &mut self.result }
 }
 
 
 impl TaskExec for Hello {
-    fn required_params<'a>() -> Option<Vec<&'a str>> {
-        Some(vec!["user"])
-    }
-    fn run(&mut self) -> Result<ResultRepr, ErrorRepr> {
+    fn run(&mut self) -> cdumay_error::Result<Result> {
         let default = "John Smith".to_string();
-        let host = hostname::get_hostname().unwrap_or("localhost".to_string());
+        let host = match hostname::get() {
+            Ok(os_string) => os_string.to_string_lossy().to_string(),
+            Err(_) => "localhost".to_string()
+        };
 
-        let user = match self.search_data("user") {
-            Some(Value::String(data)) => data.clone(),
-            _ => default,
+        let params: Params = match self.message().params {
+            Some(params) => params.deserialize_into().unwrap(),
+            None => Params {user: "undef".to_string()}
         };
         Ok(ResultBuilder::from(&self.message())
-            .stdout(format!("Hello {} from {}", user, host))
+            .stdout(format!("Hello {} from {}", params.user, host))
             .build()
         )
     }
 }
 
 fn main() {
+    use std::collections::BTreeMap;
     env_logger::init();
+    let message = MessageBuilder::new("hello".to_string())
+        .params({
+            let params = Params {user: "Cedric".to_string()};
+            serde_value::to_value(params).unwrap()
+        }).build();
 
-    let mut task = Hello::new(
-        &MessageRepr::new(
-            None,
-            "hello",
-            Some({
-                let mut params = HashMap::new();
-                params.insert("user".to_string(), Value::String("Cedric".to_string()));
-                params
-            }),
-            None,
-            None,
-        ),
-        None,
-    );
+    let mut task = Hello::new(&message, None);
     println!("{}", serde_json::to_string_pretty(&task.execute(None)).unwrap());
 }
 ```
 **Log Output (using RUST_LOG=debug)**
-```rust
+```
 [2019-02-01T16:02:04Z DEBUG cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - PreRun
 [2019-02-01T16:02:04Z DEBUG cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - SetStatus: status updated 'PENDING' -> 'RUNNING'
 [2019-02-01T16:02:04Z DEBUG cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - Run: Result: Ok(0, stdout: None)
@@ -125,14 +114,56 @@ fn main() {
 }
 ```
 
-## Dependencies Links
+### Macros
 
-- **cdumay_result**: https://github.com/cdumay/rust-cdumay_result
-- **cdumay_error**: https://github.com/cdumay/rust-cdumay_error
+To automatically generate implementations for tasks, this create defines macros
 
-## Project Links
+The following code reuse the previous example
 
-- Issues: https://github.com/cdumay/rust-cdumay_job/issues
-- Documentation: https://docs.rs/cdumay_job
+```rust
+use cdumay_job::{define_task, MessageBuilder, TaskExec,TaskInfo };
+use log::info;
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use cdumay_result::ResultBuilder;
 
-License: MIT
+#[derive(Serialize, Deserialize)]
+pub struct Params {
+    user: String
+}
+
+define_task!(Hello);
+
+impl TaskExec for Hello {
+    fn run(&mut self) -> cdumay_error::Result<cdumay_result::Result> {
+        let default = "John Smith".to_string();
+        let host = match hostname::get() {
+            Ok(os_string) => os_string.to_string_lossy().to_string(),
+            Err(_) => "localhost".to_string()
+        };
+
+        let params: Params = match self.message().params {
+            Some(params) => params.deserialize_into().unwrap(),
+            None => Params {user: "undef".to_string()}
+        };
+        Ok(ResultBuilder::from(&self.message())
+            .stdout(format!("Hello {} from {}", params.user, host))
+            .build()
+        )
+    }
+}
+
+
+fn main() {
+    env_logger::init();
+    let message = MessageBuilder::new("hello".to_string())
+        .params({
+            let params = Params {user: "Cedric".to_string()};
+            serde_value::to_value(params).unwrap()
+        }).build();
+
+    let mut task = Hello::new(&message, None);
+    println!("{}", serde_json::to_string_pretty(&task.execute(None)).unwrap());
+}
+```
+

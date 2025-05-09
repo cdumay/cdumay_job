@@ -1,3 +1,8 @@
+//! [![License: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue)](./LICENSE)
+//! [![cdumay_job on crates.io](https://img.shields.io/crates/v/cdumay_job)](https://crates.io/crates/cdumay_job)
+//! [![cdumay_job on docs.rs](https://docs.rs/cdumay_job/badge.svg)](https://docs.rs/cdumay_job)
+//! [![Source Code Repository](https://img.shields.io/badge/Code-On%20GitHub-blue?logo=GitHub)](https://github.com/cdumay/cdumay_job)
+//!
 //! A library to follow job execution using validation and checks steps.
 //!
 //! ## Quickstart
@@ -5,31 +10,30 @@
 //! _Cargo.toml_:
 //! ```toml
 //! [dependencies]
-//! cdumay_error = "0.3"
-//! cdumay_result = "0.3"
-//! cdumay_job = "0.3"
-//! serde = { version = "1.0", features = ["derive"] }
+//! cdumay_error = "1.0"
+//! cdumay_result = "1.0"
+//! cdumay_job = "1.0"
+//! serde = "1.0"
 //! serde_json = "1.0"
+//! serde-value = "0.7"
+//! env_logger = "0.11"
 //! hostname = "0.4"
 //! ```
 //!
 //! _main.rs_:
-//!
 //! ```rust
-//! extern crate cdumay_error;
-//! extern crate cdumay_job;
-//! extern crate cdumay_result;
-//! extern crate hostname;
-//! extern crate serde_json;
+//! use cdumay_error::Error;
+//! use cdumay_job::{Message, MessageBuilder, Status, TaskExec, TaskInfo};
+//! use cdumay_result::{Result, ResultBuilder};
+//! use serde_value::Value;
+//! use std::collections::HashMap;
+//! use serde::{Serialize, Deserialize};
 //!
-//! use cdumay_error::{Error, JsonError};
-//! use cdumay_result::{JsonResult, ResultBuilder};
-//! use cdumay_result::Result;
-//! use serde_json::Value;
+//! #[derive(Serialize, Deserialize)]
+//! pub struct Params {
+//!     user: String
+//! }
 //!
-//! use cdumay_job::{Message, MessageInfo, Status, TaskExec, TaskInfo};
-//!
-//! //! //! //!
 //! #[derive(Clone)]
 //! pub struct Hello {
 //!     message: Message,
@@ -38,6 +42,13 @@
 //! }
 //!
 //! impl TaskInfo for Hello {
+//!     fn new(msg: &Message, result: Option<Result>) -> Hello {
+//!         Hello {
+//!             message: msg.clone(),
+//!             result: result.unwrap_or(msg.result.clone()),
+//!             status: Status::Pending,
+//!         }
+//!     }
 //!
 //!     fn path() -> String { module_path!().to_string() }
 //!     fn status(&self) -> Status { self.status.clone() }
@@ -51,51 +62,35 @@
 //!
 //!
 //! impl TaskExec for Hello {
-//!     fn required_params<'a>() -> Option<Vec<&'a str>> {
-//!         Some(vec!["user"])
-//!     }
-//!     fn run(&mut self) -> std::result::Result<Result, Error> {
+//!     fn run(&mut self) -> cdumay_error::Result<Result> {
 //!         let default = "John Smith".to_string();
-//!         let host = hostname::get().unwrap_or("localhost".into());
+//!         let host = match hostname::get() {
+//!             Ok(os_string) => os_string.to_string_lossy().to_string(),
+//!             Err(_) => "localhost".to_string()
+//!         };
 //!
-//!         let user = match self.search_data("user") {
-//!             Some(Value::String(data)) => data.clone(),
-//!             _ => default,
+//!         let params: Params = match self.message().params {
+//!             Some(params) => params.deserialize_into().unwrap(),
+//!             None => Params {user: "undef".to_string()}
 //!         };
 //!         Ok(ResultBuilder::from(&self.message())
-//!             .stdout(format!("Hello {} from {}", user, host))
+//!             .stdout(format!("Hello {} from {}", params.user, host))
 //!             .build()
 //!         )
 //!     }
 //! }
 //!
-//! impl Hello {
-//!     fn new(message: &Message, result: Option<Result>) -> Hello {
-//!         Hello {
-//!             message: message.clone(),
-//!             result: result.unwrap_or(message.result().clone()),
-//!             status: Status::Pending,
-//!         }
-//!     }
-//! }
-//!
 //! fn main() {
 //!     use std::collections::BTreeMap;
-//!     let mut task = Hello::new(
-//!         &Message::new(
-//!             None,
-//!             "hello",
-//!             Some({
-//!                 let mut params = BTreeMap::new();
-//!                 params.insert("user".to_string(), Value::String("Cedric".to_string()));
-//!                 params
-//!             }),
-//!             None,
-//!             None,
-//!         ),
-//!         None,
-//!     );
-//!     println!("{}", serde_json::to_string_pretty(&JsonResult::from(task.execute(None))).unwrap());
+//!     env_logger::init();
+//!     let message = MessageBuilder::new("hello".to_string())
+//!         .params({
+//!             let params = Params {user: "Cedric".to_string()};
+//!             serde_value::to_value(params).unwrap()
+//!         }).build();
+//!
+//!     let mut task = Hello::new(&message, None);
+//!     println!("{}", serde_json::to_string_pretty(&task.execute(None)).unwrap());
 //! }
 //! ```
 //! **Log Output (using RUST_LOG=debug)**
@@ -117,34 +112,67 @@
 //! }
 //! ```
 //!
-//! ## Dependencies Links
+//! ## Macros
 //!
-//! - **cdumay_result**: https://github.com/cdumay/rust-cdumay_result
-//! - **cdumay_error**: https://github.com/cdumay/rust-cdumay_error
+//! To automatically generate implementations for tasks, this create defines macros
 //!
-//! ## Project Links
+//! The following code reuse the previous example
 //!
-//! - Issues: https://github.com/cdumay/rust-cdumay_job/issues
-//! - Documentation: https://docs.rs/cdumay_job
-extern crate cdumay_error;
-extern crate cdumay_result;
-extern crate core;
-extern crate futures;
-extern crate hostname;
-#[macro_use]
-extern crate log;
-extern crate rand;
-extern crate serde;
-extern crate serde_json;
-extern crate uuid;
+//! ```rust
+//! use cdumay_job::{define_task, MessageBuilder, TaskExec,TaskInfo };
+//! use log::info;
+//! use serde::{Deserialize, Serialize};
+//! use std::collections::BTreeMap;
+//! use cdumay_result::ResultBuilder;
+//!
+//! #[derive(Serialize, Deserialize)]
+//! pub struct Params {
+//!     user: String
+//! }
+//!
+//! define_task!(Hello);
+//!
+//! impl TaskExec for Hello {
+//!     fn run(&mut self) -> cdumay_error::Result<cdumay_result::Result> {
+//!         let default = "John Smith".to_string();
+//!         let host = match hostname::get() {
+//!             Ok(os_string) => os_string.to_string_lossy().to_string(),
+//!             Err(_) => "localhost".to_string()
+//!         };
+//!
+//!         let params: Params = match self.message().params {
+//!             Some(params) => params.deserialize_into().unwrap(),
+//!             None => Params {user: "undef".to_string()}
+//!         };
+//!         Ok(ResultBuilder::from(&self.message())
+//!             .stdout(format!("Hello {} from {}", params.user, host))
+//!             .build()
+//!         )
+//!     }
+//! }
+//!
+//!
+//! fn main() {
+//!     env_logger::init();
+//!     let message = MessageBuilder::new("hello".to_string())
+//!         .params({
+//!             let params = Params {user: "Cedric".to_string()};
+//!             serde_value::to_value(params).unwrap()
+//!         }).build();
+//!
+//!     let mut task = Hello::new(&message, None);
+//!     println!("{}", serde_json::to_string_pretty(&task.execute(None)).unwrap());
+//! }
+//! ```
+//!
 
-pub use messages::{Message, MessageInfo};
+pub use messages::{Message, MessageBuilder};
 pub use status::Status;
 pub use task::{TaskExec, TaskInfo};
-pub use result::Result;
 
 mod messages;
 mod operation;
-mod task;
 mod status;
-mod result;
+mod task;
+#[macro_use]
+mod macros;
