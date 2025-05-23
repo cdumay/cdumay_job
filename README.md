@@ -24,7 +24,7 @@ hostname = "0.4"
 _main.rs_:
 ```rust
 use cdumay_core::Error;
-use cdumay_job::{Result, ResultBuilder, Status, TaskExec, TaskInfo};
+use cdumay_job::{ResultBuilder, Status, TaskExec, TaskInfo};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -36,7 +36,7 @@ pub struct HelloParams {
 pub struct Hello {
     metadata: (),
     params: Option<HelloParams>,
-    result: Result,
+    result: cdumay_job::Result,
     status: Status,
     uuid: uuid::Uuid,
 }
@@ -56,10 +56,10 @@ impl TaskInfo for Hello {
     fn uuid(&self) -> uuid::Uuid {
         self.uuid
     }
-    fn result(&self) -> Result {
+    fn result(&self) -> cdumay_job::Result {
         self.result.clone()
     }
-    fn result_mut(&mut self) -> &mut Result {
+    fn result_mut(&mut self) -> &mut cdumay_job::Result {
         &mut self.result
     }
     fn metadata(&self) -> &Self::MetadataType {
@@ -74,7 +74,7 @@ impl TaskInfo for Hello {
 }
 
 impl TaskExec for Hello {
-    fn run(&mut self, mut result: Result) -> std::result::Result<Result, Error> {
+    fn run(&mut self, mut result: cdumay_job::Result) -> Result<cdumay_job::Result, Error> {
         let host = match hostname::get() {
             Ok(os_string) => os_string.to_string_lossy().to_string(),
             Err(_) => "localhost".to_string(),
@@ -121,13 +121,13 @@ fn main() {
 
 ### Macros
 
-To automatically generate implementations for tasks, this create defines macros
+The macro [`define_task!`] allow to implement [`TaskInfo`] to simplify the code
 
 The following code reuse the previous example
 
 ```rust
 use cdumay_core::Error;
-use cdumay_job::{define_task, Result,ResultBuilder, Status, TaskExec, TaskInfo};
+use cdumay_job::{define_task, ResultBuilder, Status, TaskExec, TaskInfo};
 use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -142,7 +142,7 @@ define_task!{
 }
 
 impl TaskExec for Hello {
-    fn run(&mut self, mut result: Result) -> std::result::Result<Result, Error> {
+    fn run(&mut self, mut result: cdumay_job::Result) -> Result<cdumay_job::Result, Error> {
         let host = match hostname::get() {
             Ok(os_string) => os_string.to_string_lossy().to_string(),
             Err(_) => "localhost".to_string()
@@ -157,7 +157,7 @@ impl TaskExec for Hello {
 
 fn main() {
     env_logger::init();
-    let params = HelloParams { user: "John".into() };
+    let params = HelloParams { user: "John Smith".into() };
     let mut task = Hello::new(Some(params), None);
     println!("{}", serde_json::to_string_pretty(&task.execute(None)).unwrap());
 }
