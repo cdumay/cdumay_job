@@ -10,8 +10,7 @@
 //! _Cargo.toml_:
 //! ```toml
 //! [dependencies]
-//! cdumay_error = "1.0"
-//! cdumay_result = "1.0"
+//! cdumay_core = "0.1"
 //! cdumay_job = "1.0"
 //! serde = "1.0"
 //! serde_json = "1.0"
@@ -22,92 +21,98 @@
 //!
 //! _main.rs_:
 //! ```rust
-//! use cdumay_error::Error;
-//! use cdumay_job::{Message, MessageBuilder, Status, TaskExec, TaskInfo};
-//! use cdumay_result::{Result, ResultBuilder};
-//! use serde_value::Value;
-//! use std::collections::HashMap;
-//! use serde::{Serialize, Deserialize};
-//!
-//! #[derive(Serialize, Deserialize)]
-//! pub struct Params {
-//!     user: String
+//! use cdumay_core::Error;
+//! use cdumay_job::{Result, ResultBuilder, Status, TaskExec, TaskInfo};
+//! use serde::{Deserialize, Serialize};
+//! 
+//! #[derive(Serialize, Deserialize, Clone, Debug, Default)]
+//! pub struct HelloParams {
+//!     user: String,
 //! }
-//!
-//! #[derive(Clone)]
+//! 
+//! #[derive(Clone, Debug, Serialize, Deserialize)]
 //! pub struct Hello {
-//!     message: Message,
-//!     status: Status,
+//!     metadata: (),
+//!     params: Option<HelloParams>,
 //!     result: Result,
+//!     status: Status,
+//!     uuid: uuid::Uuid,
 //! }
-//!
+//! 
 //! impl TaskInfo for Hello {
-//!     fn new(msg: &Message, result: Option<Result>) -> Hello {
-//!         Hello {
-//!             message: msg.clone(),
-//!             result: result.unwrap_or(msg.result.clone()),
-//!             status: Status::Pending,
-//!         }
+//!     type ParamType = HelloParams;
+//!     type MetadataType = ();
+//!     fn path() -> String {
+//!         format!("{}::{}", module_path!(), std::any::type_name::<Self>())
 //!     }
-//!
-//!     fn path() -> String { module_path!().to_string() }
-//!     fn status(&self) -> Status { self.status.clone() }
-//!     fn status_mut(&mut self) -> &mut Status { &mut self.status }
-//!
-//!     fn message(&self) -> Message { self.message.clone() }
-//!     fn message_mut(&mut self) -> &mut Message { &mut self.message }
-//!     fn result(&self) -> Result { self.result.clone() }
-//!     fn result_mut(&mut self) -> &mut Result { &mut self.result }
+//!     fn status(&self) -> Status {
+//!         self.status.clone()
+//!     }
+//!     fn status_mut(&mut self) -> &mut Status {
+//!         &mut self.status
+//!     }
+//!     fn uuid(&self) -> uuid::Uuid {
+//!         self.uuid
+//!     }
+//!     fn result(&self) -> Result {
+//!         self.result.clone()
+//!     }
+//!     fn result_mut(&mut self) -> &mut Result {
+//!         &mut self.result
+//!     }
+//!     fn metadata(&self) -> &Self::MetadataType {
+//!         &self.metadata
+//!     }
+//!     fn metadata_mut(&mut self) -> &mut Self::MetadataType {
+//!         &mut self.metadata
+//!     }
+//!     fn params(&self) -> Self::ParamType {
+//!         self.params.clone().unwrap_or_default()
+//!     }
 //! }
-//!
-//!
+//! 
 //! impl TaskExec for Hello {
-//!     fn run(&mut self) -> cdumay_error::Result<Result> {
-//!         let default = "John Smith".to_string();
+//!     fn run(&mut self, mut result: Result) -> std::result::Result<Result, Error> {
 //!         let host = match hostname::get() {
 //!             Ok(os_string) => os_string.to_string_lossy().to_string(),
-//!             Err(_) => "localhost".to_string()
+//!             Err(_) => "localhost".to_string(),
 //!         };
-//!
-//!         let params: Params = match self.message().params {
-//!             Some(params) => params.deserialize_into().unwrap(),
-//!             None => Params {user: "undef".to_string()}
-//!         };
-//!         Ok(ResultBuilder::from(&self.message())
-//!             .stdout(format!("Hello {} from {}", params.user, host))
-//!             .build()
-//!         )
+//!         Ok({
+//!             result.stdout = Some(format!("Hello {} from {}", self.params().user, host));
+//!             result
+//!         })
 //!     }
 //! }
-//!
+//! 
 //! fn main() {
-//!     use std::collections::BTreeMap;
 //!     env_logger::init();
-//!     let message = MessageBuilder::new("hello".to_string())
-//!         .params({
-//!             let params = Params {user: "Cedric".to_string()};
-//!             serde_value::to_value(params).unwrap()
-//!         }).build();
-//!
-//!     let mut task = Hello::new(&message, None);
+//! 
+//!     let mut task = Hello {
+//!         metadata: (),
+//!         params: Some(HelloParams {
+//!             user: "John Smith".to_string(),
+//!         }),
+//!         result: ResultBuilder::default().build(),
+//!         status: Status::Pending,
+//!         uuid: uuid::Uuid::new_v4(),
+//!     };
 //!     println!("{}", serde_json::to_string_pretty(&task.execute(None)).unwrap());
 //! }
 //! ```
 //! **Log Output (using RUST_LOG=debug)**
 //! ```text
-//! [2019-02-01T16:02:04Z DEBUG cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - PreRun
-//! [2019-02-01T16:02:04Z DEBUG cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - SetStatus: status updated 'PENDING' -> 'RUNNING'
-//! [2019-02-01T16:02:04Z DEBUG cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - Run: Result: Ok(0, stdout: None)
-//! [2019-02-01T16:02:04Z DEBUG cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - PostRun: Result: Ok(0, stdout: Some("Hello Cedric from cdumay-desk"))
-//! [2019-02-01T16:02:04Z DEBUG cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - SetStatus: status updated 'RUNNING' -> 'SUCCESS'
-//! [2019-02-01T16:02:04Z INFO  cdumay_job::task] hello[39131d5b-a149-4a84-b183-c5eed1ef1ed1] - Success: Result: Ok(0, stdout: Some("Hello Cedric from cdumay-desk"))
+//! [2025-05-23T18:19:04Z INFO  cdumay_job::task] cdumay_job::Hello[cbbe52c1-d3f2-4cd0-a050-8966d581c1ab] - TaskExecution-Start
+//! [2025-05-23T18:19:04Z INFO  cdumay_job::task] cdumay_job::Hello[cbbe52c1-d3f2-4cd0-a050-8966d581c1ab] - Run-Start
+//! [2025-05-23T18:19:04Z INFO  cdumay_job::task] cdumay_job::Hello[cbbe52c1-d3f2-4cd0-a050-8966d581c1ab] - Run-End => Ok(0, stdout: Some("Hello John Smith from laptop"))
+//! [2025-05-23T18:19:04Z INFO  cdumay_job::task] cdumay_job::Hello[cbbe52c1-d3f2-4cd0-a050-8966d581c1ab] - TaskExecution-End => Ok(0, stdout: Some("Hello John Smith from laptop"))
 //! ```
 //! **Result**
 //! ```json
 //! {
-//!   "uuid": "1a0c9711-2bff-48f1-9d7e-cdcbe498e9e8",
+//!   "uuid": "e744d3fa-9da4-45c5-9f1e-aefe7fc50ddb",
 //!   "retcode": 0,
-//!   "stdout": "Hello Cedric from cdumay-desk",
+//!   "stdout": "Hello John Smith from laptop",
+//!   "stderr": null,
 //!   "retval": {}
 //! }
 //! ```
@@ -119,60 +124,50 @@
 //! The following code reuse the previous example
 //!
 //! ```rust
-//! use cdumay_job::{define_task, MessageBuilder, TaskExec,TaskInfo };
+//! use cdumay_core::Error;
+//! use cdumay_job::{define_task, Result,ResultBuilder, Status, TaskExec, TaskInfo};
 //! use log::info;
 //! use serde::{Deserialize, Serialize};
 //! use std::collections::BTreeMap;
-//! use cdumay_result::ResultBuilder;
 //!
-//! #[derive(Serialize, Deserialize)]
-//! pub struct Params {
+//! #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+//! pub struct HelloParams {
 //!     user: String
 //! }
 //!
-//! define_task!(Hello);
+//! define_task!{
+//!     Hello { params: HelloParams }
+//! }
 //!
 //! impl TaskExec for Hello {
-//!     fn run(&mut self) -> cdumay_error::Result<cdumay_result::Result> {
-//!         let default = "John Smith".to_string();
+//!     fn run(&mut self, mut result: Result) -> std::result::Result<Result, Error> {
 //!         let host = match hostname::get() {
 //!             Ok(os_string) => os_string.to_string_lossy().to_string(),
 //!             Err(_) => "localhost".to_string()
 //!         };
 //!
-//!         let params: Params = match self.message().params {
-//!             Some(params) => params.deserialize_into().unwrap(),
-//!             None => Params {user: "undef".to_string()}
-//!         };
-//!         Ok(ResultBuilder::from(&self.message())
-//!             .stdout(format!("Hello {} from {}", params.user, host))
-//!             .build()
-//!         )
+//!         Ok({
+//!             result.stdout = Some(format!("Hello {} from {}", self.params().user, host));
+//!             result
+//!         })
 //!     }
 //! }
 //!
-//!
 //! fn main() {
 //!     env_logger::init();
-//!     let message = MessageBuilder::new("hello".to_string())
-//!         .params({
-//!             let params = Params {user: "Cedric".to_string()};
-//!             serde_value::to_value(params).unwrap()
-//!         }).build();
-//!
-//!     let mut task = Hello::new(&message, None);
+//!     let params = HelloParams { user: "John".into() };
+//!     let mut task = Hello::new(Some(params), None);
 //!     println!("{}", serde_json::to_string_pretty(&task.execute(None)).unwrap());
 //! }
 //! ```
 //!
-
-pub use messages::{Message, MessageBuilder};
-pub use status::Status;
-pub use task::{TaskExec, TaskInfo};
-
-mod messages;
-mod operation;
-mod status;
-mod task;
 #[macro_use]
 mod macros;
+
+mod operation;
+mod status;
+pub use status::Status;
+mod task;
+pub use task::{TaskExec, TaskInfo};
+mod result;
+pub use result::{Result, ResultBuilder};

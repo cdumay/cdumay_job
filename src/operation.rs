@@ -1,16 +1,16 @@
 use std::ops::Add;
 
-use crate::{Message, Status, TaskExec, TaskInfo};
-use cdumay_error::{Error, Result};
+use crate::{Status, TaskExec, TaskInfo};
+use cdumay_core::Error;
 use log::{debug, error, info};
 
-pub trait Operation {
+pub trait Operation: TaskInfo {
     type TasksItems: TaskExec;
 
     /***********************************************************************************************
     // Method to check required parameters ( Message.params() <=> Task::required_params() )
      */
-    fn check_required_params(&mut self) -> Result<cdumay_result::Result> {
+    fn check_required_params(&mut self) -> Result<crate::Result, Error> {
         Ok(self.result())
     }
     /***********************************************************************************************
@@ -19,8 +19,8 @@ pub trait Operation {
     fn label(&self, action: Option<&str>) -> String {
         format!(
             "{}[{}]{}",
-            self.message().entrypoint,
-            self.message().uuid,
+            Self::path(),
+            self.uuid(),
             match action {
                 Some(data) => format!(" - {}", data),
                 None => String::new(),
@@ -30,32 +30,32 @@ pub trait Operation {
     /***********************************************************************************************
     // Post Init - Trigger launched just after initialization, it performs checks
      */
-    fn _post_init(&mut self) -> Result<cdumay_result::Result> {
+    fn _post_init(&mut self) -> Result<crate::Result, Error> {
         *self.result_mut() = &self.result() + &self.check_required_params()?;
         self.post_init()
     }
-    fn post_init(&mut self) -> Result<cdumay_result::Result> {
-        Ok(cdumay_result::ResultBuilder::from(&self.message()).build())
+    fn post_init(&mut self) -> Result<crate::Result, Error> {
+        Ok(self.result())
     }
     /***********************************************************************************************
     // Pre Run - Trigger launched just before running the task
      */
-    fn _pre_run(&mut self) -> Result<cdumay_result::Result> {
+    fn _pre_run(&mut self) -> Result<crate::Result, Error> {
         debug!("{}", self.label(Some("PreRun")));
         self.pre_run()
     }
-    fn pre_run(&mut self) -> Result<cdumay_result::Result> {
-        Ok(cdumay_result::ResultBuilder::from(&self.message()).build())
+    fn pre_run(&mut self) -> Result<crate::Result, Error> {
+        Ok(self.result())
     }
     /***********************************************************************************************
     // Run - Trigger which represent the task body. It usually overwrites
      */
-    fn _run(&mut self) -> Result<cdumay_result::Result> {
+    fn _run(&mut self) -> Result<crate::Result, Error> {
         *self.result_mut() = &self.result() + &self._set_status(Status::Running)?;
         debug!("{}: {}", self.label(Some("Run")), self.result());
         self.run()
     }
-    fn run(&mut self) -> Result<cdumay_result::Result> {
+    fn run(&mut self) -> Result<crate::Result, Error> {
         let mut result = self.result();
         for task in self.tasks_mut() {
             if task.status() != Status::Success {
@@ -67,43 +67,41 @@ pub trait Operation {
     /***********************************************************************************************
     // Post Run - Trigger launched just after running the task
      */
-    fn _post_run(&mut self) -> Result<cdumay_result::Result> {
+    fn _post_run(&mut self) -> Result<crate::Result, Error> {
         debug!("{}: {}", self.label(Some("PostRun")), self.result());
         self.post_run()
     }
-    fn post_run(&mut self) -> Result<cdumay_result::Result> {
-        Ok(cdumay_result::ResultBuilder::from(&self.message()).build())
+    fn post_run(&mut self) -> Result<crate::Result, Error> {
+        Ok(self.result())
     }
     /***********************************************************************************************
     // On Error - Trigger raised if any error is raised
      */
-    fn _on_error(&mut self, error: &Error) -> Result<cdumay_result::Result> {
+    fn _on_error(&mut self, error: &Error) -> Result<crate::Result, Error> {
         *self.result_mut() = &self.result() + &self._set_status(Status::Failed)?;
-        *self.result_mut() = &self.result() + &cdumay_result::Result::from(error.clone());
+        *self.result_mut() = &self.result() + &crate::Result::from(error.clone());
         error!("{}: {}", self.label(Some("Failed")), self.result());
         self.on_error(error)
     }
-    fn on_error(&mut self, error: &Error) -> Result<cdumay_result::Result> {
-        Ok(cdumay_result::ResultBuilder::from(&self.message())
-            .build()
-            .add(&cdumay_result::Result::from(error.clone())))
+    fn on_error(&mut self, error: &Error) -> Result<crate::Result, Error> {
+        Ok(self.result().add(&crate::Result::from(error.clone())))
     }
     /***********************************************************************************************
     // On Success - Trigger launched if the task has succeeded
      */
-    fn _on_success(&mut self) -> Result<cdumay_result::Result> {
+    fn _on_success(&mut self) -> Result<crate::Result, Error> {
         *self.result_mut() = &self.result() + &self._set_status(Status::Success)?;
         info!("{}: {}", self.label(Some("Success")), self.result());
         self.on_success()
     }
-    fn on_success(&mut self) -> Result<cdumay_result::Result> {
-        Ok(cdumay_result::ResultBuilder::from(&self.message()).build())
+    fn on_success(&mut self) -> Result<crate::Result, Error> {
+        Ok(self.result())
     }
     /***********************************************************************************************
     // Unsafe Execute - Method to call to get a Result of the task execution.
     // NOTE: the trigger on_error is not called!
      */
-    fn unsafe_execute(&mut self, result: Option<cdumay_result::Result>) -> Result<cdumay_result::Result> {
+    fn unsafe_execute(&mut self, result: Option<crate::Result>) -> Result<crate::Result, Error> {
         if let Some(data) = result {
             *self.result_mut() = &self.result() + &data;
         }
@@ -116,12 +114,12 @@ pub trait Operation {
     /***********************************************************************************************
     // Execute - The method used by the registry
      */
-    fn execute(&mut self, result: Option<cdumay_result::Result>) -> cdumay_result::Result {
+    fn execute(&mut self, result: Option<crate::Result>) -> crate::Result {
         match self.unsafe_execute(result) {
             Ok(result) => result,
             Err(err) => match self._on_error(&err) {
                 Ok(result) => result,
-                Err(err) => cdumay_result::Result::from(err),
+                Err(err) => crate::Result::from(err),
             },
         }
     }
@@ -129,24 +127,24 @@ pub trait Operation {
     // Status - Methods to update the status of the task. it can be overwrite to perform action such
     // as database save ...
      */
-    fn _set_status(&mut self, status: Status) -> Result<cdumay_result::Result> {
+    fn _set_status(&mut self, status: Status) -> Result<crate::Result, Error> {
         debug!("{}: status updated '{}' -> '{}'", self.label(Some("SetStatus")), self.status(), &status);
         self.set_status(status)
     }
-    fn set_status(&mut self, status: Status) -> Result<cdumay_result::Result> {
+    fn set_status(&mut self, status: Status) -> Result<crate::Result, Error> {
         *self.status_mut() = status;
-        Ok(cdumay_result::ResultBuilder::from(&self.message()).build())
+        Ok(self.result())
     }
 
     /***********************************************************************************************
     // On Pre Build - Trigger launched on operation building
      */
-    fn _pre_build(&mut self) -> Result<cdumay_result::Result> {
+    fn _pre_build(&mut self) -> Result<crate::Result, Error> {
         debug!("{}: {}", self.label(Some("PreBuild")), self.result());
         self.pre_build()
     }
-    fn pre_build(&mut self) -> Result<cdumay_result::Result> {
-        Ok(cdumay_result::ResultBuilder::from(&self.message()).build())
+    fn pre_build(&mut self) -> Result<crate::Result, Error> {
+        Ok(self.result())
     }
     /***********************************************************************************************
     // Operation build
@@ -157,7 +155,7 @@ pub trait Operation {
     fn build_tasks(&self) -> Vec<Self::TasksItems> {
         vec![]
     }
-    fn build(&mut self) -> Result<cdumay_result::Result> {
+    fn build(&mut self) -> Result<crate::Result, Error> {
         *self.result_mut() = &self.result() + &self._pre_build()?;
         *self.tasks_mut() = self._build_tasks();
         debug!("{}: {} task(s) found", self.label(Some("Build")), self.tasks().len());
@@ -166,7 +164,7 @@ pub trait Operation {
     /***********************************************************************************************
     // Finalize: Finalize the task, use by operation to perform database save or so one.
      */
-    fn finalize(&self) -> Result<cdumay_result::Result> {
+    fn finalize(&self) -> Result<crate::Result, Error> {
         let mut result = self.result();
         for task in self.tasks() {
             result = &result + &task.finalize()?;
@@ -177,10 +175,10 @@ pub trait Operation {
     /***********************************************************************************************
     // Operation over kafka
      */
-    fn launch(&mut self, result: Option<cdumay_result::Result>) -> Result<cdumay_result::Result> {
+    fn launch(&mut self, result: Option<crate::Result>) -> Result<crate::Result, Error> {
         self.launch_next(None, result)
     }
-    fn launch_next(&mut self, task: Option<Self::TasksItems>, result: Option<cdumay_result::Result>) -> Result<cdumay_result::Result> {
+    fn launch_next(&mut self, task: Option<Self::TasksItems>, result: Option<crate::Result>) -> Result<crate::Result, Error> {
         match task {
             Some(task) => match self.next(&task) {
                 Some(next) => next.send(result),
@@ -193,22 +191,13 @@ pub trait Operation {
             },
             None => match self.tasks().len() > 0 {
                 true => self.tasks()[0].send(result),
-                false => Ok(cdumay_result::ResultBuilder::from(&self.message())
-                    .stderr("Nothing to do, empty operation !".to_string())
-                    .build()),
+                false => Ok({
+                    self.result_mut().stderr = Some("Nothing to do, empty operation !".to_string());
+                    self.result()
+                }),
             },
         }
     }
-
-    // to implement: constructor & property getters / setters
-    fn new(message: &Message, result: Option<cdumay_result::Result>) -> Self;
-    fn status(&self) -> Status;
-    fn status_mut(&mut self) -> &mut Status;
-
-    fn message(&self) -> Message;
-    fn message_mut(&mut self) -> &mut Message;
-    fn result(&self) -> cdumay_result::Result;
-    fn result_mut(&mut self) -> &mut cdumay_result::Result;
     fn tasks(&self) -> &Vec<Self::TasksItems>;
     fn tasks_mut(&mut self) -> &mut Vec<Self::TasksItems>;
 
