@@ -35,16 +35,36 @@ pub struct HelloParams {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Hello {
     metadata: (),
-    params: Option<HelloParams>,
+    params: HelloParams,
     result: cdumay_job::Result,
     status: Status,
     uuid: uuid::Uuid,
 }
 
+impl Hello {
+    pub fn new(params: Option<HelloParams>, metadata: Option<()>) -> Self {
+        let uuid = uuid::Uuid::new_v4();
+        Self {
+            metadata: metadata.unwrap_or_default(),
+            params: params.unwrap_or_default(),
+            result: ResultBuilder::default().uuid(uuid).build(),
+            status: Status::default(),
+            uuid
+        }
+    }
+    pub fn params(&self) -> &HelloParams {
+        &self.params
+    }
+    pub fn metadata(&self) -> &() {
+        &self.metadata
+    }
+    pub fn metadata_mut(&mut self) -> &mut () {
+        &mut self.metadata
+    }
+}
+
 impl TaskInfo for Hello {
-    type ParamType = HelloParams;
-    type MetadataType = ();
-    fn path() -> String {
+    fn path(&self) -> String {
         format!("{}::{}", module_path!(), std::any::type_name::<Self>())
     }
     fn status(&self) -> Status {
@@ -61,15 +81,6 @@ impl TaskInfo for Hello {
     }
     fn result_mut(&mut self) -> &mut cdumay_job::Result {
         &mut self.result
-    }
-    fn metadata(&self) -> &Self::MetadataType {
-        &self.metadata
-    }
-    fn metadata_mut(&mut self) -> &mut Self::MetadataType {
-        &mut self.metadata
-    }
-    fn params(&self) -> Self::ParamType {
-        self.params.clone().unwrap_or_default()
     }
 }
 
@@ -91,9 +102,9 @@ fn main() {
 
     let mut task = Hello {
         metadata: (),
-        params: Some(HelloParams {
+        params: HelloParams {
             user: "John Smith".to_string(),
-        }),
+        },
         result: ResultBuilder::default().build(),
         status: Status::Pending,
         uuid: uuid::Uuid::new_v4(),
@@ -101,7 +112,7 @@ fn main() {
     println!("{}", serde_json::to_string_pretty(&task.execute(None)).unwrap());
 }
 ```
-**Log Output (using RUST_LOG=debug)**
+**Log Output (using RUST_LOG=info)**
 ```
 [2025-05-23T18:19:04Z INFO  cdumay_job::task] cdumay_job::Hello[cbbe52c1-d3f2-4cd0-a050-8966d581c1ab] - TaskExecution-Start
 [2025-05-23T18:19:04Z INFO  cdumay_job::task] cdumay_job::Hello[cbbe52c1-d3f2-4cd0-a050-8966d581c1ab] - Run-Start

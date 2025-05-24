@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod test {
+mod test_macros {
     use cdumay_error_standard::Unexpected;
     use cdumay_job::{define_task, TaskExec};
 
@@ -15,7 +15,7 @@ mod test {
     
     impl TaskExec for Hello {
         fn run(&mut self, mut result: cdumay_job::Result) -> Result<cdumay_job::Result, cdumay_core::Error> {
-            result.stdout = Some(format!("Hello {}", self.params.clone().unwrap().name));
+            result.stdout = Some(format!("Hello {}", self.params.name));
             Ok(result)
         }
     }

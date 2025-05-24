@@ -1,25 +1,35 @@
-use std::ops::Add;
-
 use crate::{Status, TaskExec, TaskInfo};
 use cdumay_core::Error;
 use log::{debug, error, info};
 
-pub trait Operation: TaskInfo {
-    type TasksItems: TaskExec;
+pub trait OperationInfo: TaskInfo {
+    fn tasks(&self) -> &Vec<Box<dyn TaskExec>>;
+    fn tasks_mut(&mut self) -> &mut Vec<Box<dyn TaskExec>>;
+}
 
-    /***********************************************************************************************
-    // Method to check required parameters ( Message.params() <=> Task::required_params() )
-     */
+pub trait OperationExec: OperationInfo {
     fn check_required_params(&mut self) -> Result<crate::Result, Error> {
+        for task in self.tasks_mut() {
+            task.check_required_params()?;
+        }
         Ok(self.result())
     }
-    /***********************************************************************************************
-    // Method to format log prefix (=label)
-     */
+
+    fn label_result(&self, action: &str, result: &Result<crate::Result, Error>) -> String {
+        format!(
+            "{} => {}",
+            self.label(Some(action)),
+            match result {
+                Ok(data) => format!("{data}"),
+                Err(error) => format!("{error}"),
+            }
+        )
+    }
+
     fn label(&self, action: Option<&str>) -> String {
         format!(
             "{}[{}]{}",
-            Self::path(),
+            self.path(),
             self.uuid(),
             match action {
                 Some(data) => format!(" - {}", data),
@@ -27,36 +37,37 @@ pub trait Operation: TaskInfo {
             }
         )
     }
-    /***********************************************************************************************
-    // Post Init - Trigger launched just after initialization, it performs checks
-     */
     fn _post_init(&mut self) -> Result<crate::Result, Error> {
-        *self.result_mut() = &self.result() + &self.check_required_params()?;
-        self.post_init()
+        debug!("{}", self.label(Some("PostInit-Start")));
+        let result = self.post_init(self.new_result());
+        debug!("{}", self.label_result("PostInit-End", &result));
+        Ok(result?)
     }
-    fn post_init(&mut self) -> Result<crate::Result, Error> {
-        Ok(self.result())
+
+    fn post_init(&mut self, result: crate::Result) -> Result<crate::Result, Error> {
+        Ok(result)
     }
-    /***********************************************************************************************
-    // Pre Run - Trigger launched just before running the task
-     */
+
     fn _pre_run(&mut self) -> Result<crate::Result, Error> {
-        debug!("{}", self.label(Some("PreRun")));
-        self.pre_run()
+        debug!("{}", self.label(Some("PreRun-Start")));
+        let result = self.pre_run(self.new_result());
+        debug!("{}", self.label_result("PreRun-End", &result));
+        Ok(result?)
     }
-    fn pre_run(&mut self) -> Result<crate::Result, Error> {
-        Ok(self.result())
+
+    fn pre_run(&mut self, result: crate::Result) -> Result<crate::Result, Error> {
+        Ok(result)
     }
-    /***********************************************************************************************
-    // Run - Trigger which represent the task body. It usually overwrites
-     */
+
     fn _run(&mut self) -> Result<crate::Result, Error> {
-        *self.result_mut() = &self.result() + &self._set_status(Status::Running)?;
-        debug!("{}: {}", self.label(Some("Run")), self.result());
-        self.run()
+        info!("{}", self.label(Some("Run-Start")));
+        self._set_status(Status::Running)?;
+        let result = self.run(self.new_result());
+        info!("{}", self.label_result("Run-End", &result));
+        Ok(result?)
     }
-    fn run(&mut self) -> Result<crate::Result, Error> {
-        let mut result = self.result();
+
+    fn run(&mut self, mut result: crate::Result) -> Result<crate::Result, Error> {
         for task in self.tasks_mut() {
             if task.status() != Status::Success {
                 result = task.unsafe_execute(Some(result))?;
@@ -64,69 +75,65 @@ pub trait Operation: TaskInfo {
         }
         Ok(result)
     }
-    /***********************************************************************************************
-    // Post Run - Trigger launched just after running the task
-     */
+
     fn _post_run(&mut self) -> Result<crate::Result, Error> {
-        debug!("{}: {}", self.label(Some("PostRun")), self.result());
-        self.post_run()
+        debug!("{}", self.label(Some("PostRun-Start")));
+        let result = self.post_run(self.new_result());
+        debug!("{}", self.label_result("PostRun-End", &result));
+        Ok(result?)
     }
-    fn post_run(&mut self) -> Result<crate::Result, Error> {
-        Ok(self.result())
+    fn post_run(&mut self, result: crate::Result) -> Result<crate::Result, Error> {
+        Ok(result)
     }
-    /***********************************************************************************************
-    // On Error - Trigger raised if any error is raised
-     */
+
     fn _on_error(&mut self, error: &Error) -> Result<crate::Result, Error> {
-        *self.result_mut() = &self.result() + &self._set_status(Status::Failed)?;
+        debug!("{}", self.label(Some("OnError-Start")));
+        self._set_status(Status::Failed)?;
         *self.result_mut() = &self.result() + &crate::Result::from(error.clone());
-        error!("{}: {}", self.label(Some("Failed")), self.result());
-        self.on_error(error)
-    }
-    fn on_error(&mut self, error: &Error) -> Result<crate::Result, Error> {
-        Ok(self.result().add(&crate::Result::from(error.clone())))
-    }
-    /***********************************************************************************************
-    // On Success - Trigger launched if the task has succeeded
-     */
-    fn _on_success(&mut self) -> Result<crate::Result, Error> {
-        *self.result_mut() = &self.result() + &self._set_status(Status::Success)?;
-        info!("{}: {}", self.label(Some("Success")), self.result());
-        self.on_success()
-    }
-    fn on_success(&mut self) -> Result<crate::Result, Error> {
+        let result = self.on_error(error, self.new_result());
+        debug!("{}", self.label_result("OnError-End", &result));
         Ok(self.result())
     }
-    /***********************************************************************************************
-    // Unsafe Execute - Method to call to get a Result of the task execution.
-    // NOTE: the trigger on_error is not called!
-     */
+    fn on_error(&mut self, _error: &Error, result: crate::Result) -> Result<crate::Result, Error> {
+        Ok(result)
+    }
+    fn _on_success(&mut self) -> Result<crate::Result, Error> {
+        debug!("{}", self.label(Some("OnSuccess-Start")));
+        self._set_status(Status::Success)?;
+        let result = self.on_success(self.new_result());
+        debug!("{}", self.label_result("OnSuccess-End", &result));
+        Ok(result?)
+    }
+    fn on_success(&mut self, result: crate::Result) -> Result<crate::Result, Error> {
+        Ok(result)
+    }
+
     fn unsafe_execute(&mut self, result: Option<crate::Result>) -> Result<crate::Result, Error> {
         if let Some(data) = result {
             *self.result_mut() = &self.result() + &data;
         }
+        *self.result_mut() = &self.result() + &self.check_required_params()?;
         *self.result_mut() = &self.result() + &self._post_init()?;
         *self.result_mut() = &self.result() + &self._pre_run()?;
         *self.result_mut() = &self.result() + &self._run()?;
         *self.result_mut() = &self.result() + &self._post_run()?;
-        self._on_success()
+        *self.result_mut() = &self.result() + &self._on_success()?;
+        Ok(self.result())
     }
-    /***********************************************************************************************
-    // Execute - The method used by the registry
-     */
     fn execute(&mut self, result: Option<crate::Result>) -> crate::Result {
+        info!("{}", self.label(Some("TaskExecution-Start".into())));
         match self.unsafe_execute(result) {
-            Ok(result) => result,
-            Err(err) => match self._on_error(&err) {
-                Ok(result) => result,
-                Err(err) => crate::Result::from(err),
-            },
+            Ok(result) => {
+                info!("{} => {}", self.label(Some("TaskExecution-End")), &result);
+                result
+            }
+            Err(err) => {
+                let result = self._on_error(&err).unwrap_or_else(|err| crate::Result::from(err));
+                error!("{} => {}", self.label(Some("TaskExecution-End")), &result);
+                result
+            }
         }
     }
-    /***********************************************************************************************
-    // Status - Methods to update the status of the task. it can be overwrite to perform action such
-    // as database save ...
-     */
     fn _set_status(&mut self, status: Status) -> Result<crate::Result, Error> {
         debug!("{}: status updated '{}' -> '{}'", self.label(Some("SetStatus")), self.status(), &status);
         self.set_status(status)
@@ -136,34 +143,24 @@ pub trait Operation: TaskInfo {
         Ok(self.result())
     }
 
-    /***********************************************************************************************
-    // On Pre Build - Trigger launched on operation building
-     */
     fn _pre_build(&mut self) -> Result<crate::Result, Error> {
-        debug!("{}: {}", self.label(Some("PreBuild")), self.result());
-        self.pre_build()
+        debug!("{}", self.label(Some("PreBuild-Start")));
+        let result = self.post_run(self.new_result());
+        debug!("{}", self.label_result("PreBuild-End", &result));
+        Ok(result?)
     }
-    fn pre_build(&mut self) -> Result<crate::Result, Error> {
-        Ok(self.result())
+    fn pre_build(&mut self, result: crate::Result) -> Result<crate::Result, Error> {
+        Ok(result)
     }
-    /***********************************************************************************************
-    // Operation build
-     */
-    fn _build_tasks(&self) -> Vec<Self::TasksItems> {
-        self.build_tasks()
-    }
-    fn build_tasks(&self) -> Vec<Self::TasksItems> {
+    fn build_tasks(&self) -> Vec<Box<dyn TaskExec>> {
         vec![]
     }
     fn build(&mut self) -> Result<crate::Result, Error> {
         *self.result_mut() = &self.result() + &self._pre_build()?;
-        *self.tasks_mut() = self._build_tasks();
+        *self.tasks_mut() = self.build_tasks();
         debug!("{}: {} task(s) found", self.label(Some("Build")), self.tasks().len());
         self.finalize()
     }
-    /***********************************************************************************************
-    // Finalize: Finalize the task, use by operation to perform database save or so one.
-     */
     fn finalize(&self) -> Result<crate::Result, Error> {
         let mut result = self.result();
         for task in self.tasks() {
@@ -172,13 +169,10 @@ pub trait Operation: TaskInfo {
         Ok(result)
     }
 
-    /***********************************************************************************************
-    // Operation over kafka
-     */
     fn launch(&mut self, result: Option<crate::Result>) -> Result<crate::Result, Error> {
         self.launch_next(None, result)
     }
-    fn launch_next(&mut self, task: Option<Self::TasksItems>, result: Option<crate::Result>) -> Result<crate::Result, Error> {
+    fn launch_next(&mut self, task: Option<Box<dyn TaskExec>>, result: Option<crate::Result>) -> Result<crate::Result, Error> {
         match task {
             Some(task) => match self.next(&task) {
                 Some(next) => next.send(result),
@@ -198,9 +192,7 @@ pub trait Operation: TaskInfo {
             },
         }
     }
-    fn tasks(&self) -> &Vec<Self::TasksItems>;
-    fn tasks_mut(&mut self) -> &mut Vec<Self::TasksItems>;
-
-    // to implement
-    fn next(&mut self, task: &Self::TasksItems) -> Option<Self::TasksItems>;
+    fn next(&mut self, _task: &Box<dyn TaskExec>) -> Option<Box<dyn TaskExec>> {
+        unimplemented!("To implement for remote execution")
+    }
 }

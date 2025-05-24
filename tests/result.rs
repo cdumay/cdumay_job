@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod test {
+mod test_result {
     use cdumay_core::Error;
     use cdumay_error_standard::Unexpected;
     use cdumay_job::{ResultBuilder, Result};
@@ -63,7 +63,7 @@ mod test {
         let r2 = ResultBuilder::default().stdout("Ok!".into()).build();
         let r3 = r1.add(&r2);
         assert_eq!(r3.is_error(), false);
-        assert_eq!(r3.stdout, Some("Ok!\nOk!".to_string()));
+        assert_eq!(r3.stdout, Some("Ok!".to_string()));
         assert_eq!(r3.stderr, None);
     }
     #[test]
@@ -76,7 +76,7 @@ mod test {
         let r3 = r1.add(&r2);
         assert_eq!(r3.is_error(), true);
         assert_eq!(r3.stdout, None);
-        assert_eq!(r3.stderr, Some("Error!\nError!".to_string()));
+        assert_eq!(r3.stderr, Some("Error!".to_string()));
     }
     #[test]
     fn test_ser() {

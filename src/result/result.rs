@@ -75,7 +75,7 @@ impl Add for &Result {
     /// The combination rules are:
     /// - Uses the second result's UUID
     /// - Takes the highest return code
-    /// - Concatenates stdout and stderr with newlines
+    /// - Uses the second std first
     /// - Merges the return value maps
     ///
     /// # Examples
@@ -92,7 +92,7 @@ impl Add for &Result {
     ///     .build();
     ///
     /// let combined = &result1 + &result2;
-    /// assert_eq!(combined.stdout, Some("First output\nSecond output".into()));
+    /// assert_eq!(combined.stdout, Some("Second output".into()));
     /// ```
     fn add(self, other: &Result) -> Result {
         Result {
@@ -103,13 +103,13 @@ impl Add for &Result {
             },
             stdout: match (self.stdout.clone(), other.stdout.clone()) {
                 (None, None) => None,
-                (Some(ref data), None) | (None, Some(ref data)) => Some(data.to_string()),
-                (Some(ref data1), Some(ref data2)) => Some(format!("{}\n{}", data1, data2)),
+                (Some(ref data), None) => Some(data.to_string()),
+                (_, Some(ref data)) => Some(data.to_string()),
             },
             stderr: match (self.stderr.clone(), other.stderr.clone()) {
                 (None, None) => None,
-                (Some(ref data), None) | (None, Some(ref data)) => Some(data.to_string()),
-                (Some(ref data1), Some(ref data2)) => Some(format!("{}\n{}", data1, data2)),
+                (Some(ref data), None) => Some(data.to_string()),
+                (_, Some(ref data)) => Some(data.to_string()),
             },
             retval: {
                 let mut out = self.retval.clone();

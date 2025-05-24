@@ -2,10 +2,10 @@ name: Build, Test and Check
 on:
   pull_request:
     branches:
-      - master
+      - "*"
   push:
     branches:
-      - master
+      - "*"
 jobs:
   build_and_test_linux:
     name: Build and Test (Linux)

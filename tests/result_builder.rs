@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod test {
+mod test_result_builder {
     use cdumay_job::ResultBuilder;
     use serde_value::Value;
     use std::collections::BTreeMap;
