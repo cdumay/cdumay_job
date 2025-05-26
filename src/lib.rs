@@ -83,7 +83,7 @@
 //! }
 //! 
 //! impl TaskExec for Hello {
-//!     fn run(&mut self, mut result: cdumay_job::Result) -> Result<cdumay_job::Result, Error> {
+//!     fn run(&mut self, mut result: cdumay_job::Result) -> cdumay_core::Result<cdumay_job::Result> {
 //!         let host = match hostname::get() {
 //!             Ok(os_string) => os_string.to_string_lossy().to_string(),
 //!             Err(_) => "localhost".to_string(),
@@ -151,7 +151,7 @@
 //! }
 //!
 //! impl TaskExec for Hello {
-//!     fn run(&mut self, mut result: cdumay_job::Result) -> Result<cdumay_job::Result, Error> {
+//!     fn run(&mut self, mut result: cdumay_job::Result) -> cdumay_core::Result<cdumay_job::Result> {
 //!         let host = match hostname::get() {
 //!             Ok(os_string) => os_string.to_string_lossy().to_string(),
 //!             Err(_) => "localhost".to_string()

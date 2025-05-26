@@ -14,7 +14,7 @@ mod test_macros {
     }
     
     impl TaskExec for Hello {
-        fn run(&mut self, mut result: cdumay_job::Result) -> Result<cdumay_job::Result, cdumay_core::Error> {
+        fn run(&mut self, mut result: cdumay_job::Result) -> cdumay_core::Result<cdumay_job::Result> {
             result.stdout = Some(format!("Hello {}", self.params.name));
             Ok(result)
         }
@@ -25,7 +25,7 @@ mod test_macros {
     }
     
     impl TaskExec for HelloError {
-        fn run(&mut self, _: cdumay_job::Result) -> Result<cdumay_job::Result, cdumay_core::Error> {
+        fn run(&mut self, _: cdumay_job::Result) -> cdumay_core::Result<cdumay_job::Result> {
             Err(Unexpected::new().with_message("Task failed !".to_string()).into())
         }
     }

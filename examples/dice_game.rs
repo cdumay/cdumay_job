@@ -1,4 +1,3 @@
-use cdumay_core::Error;
 use cdumay_error_standard::Unexpected;
 use cdumay_job::{OperationExec, TaskExec, define_operation, define_task};
 use rand::Rng;
@@ -24,7 +23,7 @@ define_task! {
 }
 
 impl TaskExec for DiceRoll {
-    fn run(&mut self, mut result: cdumay_job::Result) -> Result<cdumay_job::Result, Error> {
+    fn run(&mut self, mut result: cdumay_job::Result) -> cdumay_core::Result<cdumay_job::Result> {
         let mut rng = rand::rng();
         let roll: u8 = rng.random_range(1..=7);
         let score: u16 = match roll {
@@ -53,7 +52,7 @@ define_task! {
 }
 
 impl TaskExec for DisplayScore {
-    fn run(&mut self, mut result: cdumay_job::Result) -> Result<cdumay_job::Result, Error> {
+    fn run(&mut self, mut result: cdumay_job::Result) -> cdumay_core::Result<cdumay_job::Result> {
         let score = self
             .result
             .retval
@@ -102,7 +101,7 @@ impl OperationExec for Zanzibar {
     }
 }
 
-fn play(nb_launch: u8) -> Result<cdumay_job::Result, Error> {
+fn play(nb_launch: u8) -> cdumay_core::Result<cdumay_job::Result> {
     let mut game = Zanzibar::new(Some(GameSetting { nb_launch }), Some(Context { env: "development".into() }));
     game.build()?;
     Ok(game.execute(None))

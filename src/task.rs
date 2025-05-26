@@ -69,10 +69,10 @@ pub trait TaskExec: TaskInfo {
     fn entrypoint(&self) -> String {
         self.path()
     }
-    fn check_required_params(&mut self) -> Result<crate::Result, cdumay_core::Error> {
+    fn check_required_params(&mut self) -> cdumay_core::Result<crate::Result> {
         Ok(self.result())
     }
-    fn label_result(&self, action: &str, result: &Result<crate::Result, cdumay_core::Error>) -> String {
+    fn label_result(&self, action: &str, result: &cdumay_core::Result<crate::Result>) -> String {
         format!(
             "{} => {}",
             self.label(Some(action)),
@@ -93,44 +93,44 @@ pub trait TaskExec: TaskInfo {
             }
         )
     }
-    fn _post_init(&mut self) -> Result<crate::Result, cdumay_core::Error> {
+    fn _post_init(&mut self) -> cdumay_core::Result<crate::Result> {
         debug!("{}", self.label(Some("PostInit-Start")));
         let result = self.post_init(self.new_result());
         debug!("{}", self.label_result("PostInit-End", &result));
         Ok(result?)
     }
-    fn post_init(&mut self, result: crate::Result) -> Result<crate::Result, cdumay_core::Error> {
+    fn post_init(&mut self, result: crate::Result) -> cdumay_core::Result<crate::Result> {
         Ok(result)
     }
-    fn _pre_run(&mut self) -> Result<crate::Result, cdumay_core::Error> {
+    fn _pre_run(&mut self) -> cdumay_core::Result<crate::Result> {
         debug!("{}", self.label(Some("PreRun-Start")));
         let result = self.pre_run(self.new_result());
         debug!("{}", self.label_result("PreRun-End", &result));
         Ok(result?)
     }
-    fn pre_run(&mut self, result: crate::Result) -> Result<crate::Result, cdumay_core::Error> {
+    fn pre_run(&mut self, result: crate::Result) -> cdumay_core::Result<crate::Result> {
         Ok(result)
     }
-    fn _run(&mut self) -> Result<crate::Result, cdumay_core::Error> {
+    fn _run(&mut self) -> cdumay_core::Result<crate::Result> {
         info!("{}", self.label(Some("Run-Start")));
         self._set_status(Status::Running)?;
         let result = self.run(self.new_result());
         info!("{}", self.label_result("Run-End", &result));
         Ok(result?)
     }
-    fn run(&mut self, result: crate::Result) -> Result<crate::Result, cdumay_core::Error> {
+    fn run(&mut self, result: crate::Result) -> cdumay_core::Result<crate::Result> {
         Ok(result)
     }
-    fn _post_run(&mut self) -> Result<crate::Result, cdumay_core::Error> {
+    fn _post_run(&mut self) -> cdumay_core::Result<crate::Result> {
         debug!("{}", self.label(Some("PostRun-Start")));
         let result = self.post_run(self.new_result());
         debug!("{}", self.label_result("PostRun-End", &result));
         Ok(result?)
     }
-    fn post_run(&mut self, result: crate::Result) -> Result<crate::Result, cdumay_core::Error> {
+    fn post_run(&mut self, result: crate::Result) -> cdumay_core::Result<crate::Result> {
         Ok(result)
     }
-    fn _on_error(&mut self, error: &cdumay_core::Error) -> Result<crate::Result, cdumay_core::Error> {
+    fn _on_error(&mut self, error: &cdumay_core::Error) -> cdumay_core::Result<crate::Result> {
         debug!("{}", self.label(Some("OnError-Start")));
         self._set_status(Status::Failed)?;
         *self.result_mut() = &self.result() + &crate::Result::from(error.clone());
@@ -138,20 +138,20 @@ pub trait TaskExec: TaskInfo {
         debug!("{}", self.label_result("OnError-End", &result));
         Ok(self.result())
     }
-    fn on_error(&mut self, _error: &cdumay_core::Error, result: crate::Result) -> Result<crate::Result, cdumay_core::Error> {
+    fn on_error(&mut self, _error: &cdumay_core::Error, result: crate::Result) -> cdumay_core::Result<crate::Result> {
         Ok(result)
     }
-    fn _on_success(&mut self) -> Result<crate::Result, cdumay_core::Error> {
+    fn _on_success(&mut self) -> cdumay_core::Result<crate::Result> {
         debug!("{}", self.label(Some("OnSuccess-Start")));
         self._set_status(Status::Success)?;
         let result = self.on_success(self.new_result());
         debug!("{}", self.label_result("OnSuccess-End", &result));
         Ok(result?)
     }
-    fn on_success(&mut self, result: crate::Result) -> Result<crate::Result, cdumay_core::Error> {
+    fn on_success(&mut self, result: crate::Result) -> cdumay_core::Result<crate::Result> {
         Ok(result)
     }
-    fn unsafe_execute(&mut self, result: Option<crate::Result>) -> Result<crate::Result, cdumay_core::Error> {
+    fn unsafe_execute(&mut self, result: Option<crate::Result>) -> cdumay_core::Result<crate::Result> {
         if let Some(data) = result {
             *self.result_mut() = &self.result() + &data;
         }
@@ -177,18 +177,18 @@ pub trait TaskExec: TaskInfo {
             }
         }
     }
-    fn _set_status(&mut self, status: Status) -> Result<crate::Result, cdumay_core::Error> {
+    fn _set_status(&mut self, status: Status) -> cdumay_core::Result<crate::Result> {
         debug!("{}: status updated '{}' -> '{}'", self.label(Some("SetStatus")), self.status(), &status);
         self.set_status(status)
     }
-    fn set_status(&mut self, status: Status) -> Result<crate::Result, cdumay_core::Error> {
+    fn set_status(&mut self, status: Status) -> cdumay_core::Result<crate::Result> {
         *self.status_mut() = status;
         Ok(self.result())
     }
-    fn send(&self, result: Option<crate::Result>) -> Result<crate::Result, cdumay_core::Error> {
+    fn send(&self, result: Option<crate::Result>) -> cdumay_core::Result<crate::Result> {
         Ok(result.unwrap_or(self.result()))
     }
-    fn finalize(&self) -> Result<crate::Result, cdumay_core::Error> {
+    fn finalize(&self) -> cdumay_core::Result<crate::Result> {
         Ok(self.result())
     }
 }
