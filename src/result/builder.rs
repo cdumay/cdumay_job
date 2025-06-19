@@ -113,8 +113,8 @@ impl ResultBuilder {
         Result {
             uuid: self.uuid,
             retcode: self.retcode,
-            stdout: self.stdout,
-            stderr: self.stderr,
+            stdout: self.stdout.unwrap_or_default(),
+            stderr: self.stderr.unwrap_or_default(),
             retval: self.retval,
         }
     }

@@ -1,4 +1,4 @@
-use cdumay_error_standard::Unexpected;
+use cdumay_error::Unexpected;
 use cdumay_job::{OperationExec, TaskExec, define_operation, define_task};
 use rand::Rng;
 
@@ -37,7 +37,7 @@ impl TaskExec for DiceRoll {
         };
         let launch_number = self.params().launch_number;
         Ok({
-            result.stdout = Some(format!("Roll {launch_number}: you made a {roll}"));
+            result.stdout = format!("Roll {launch_number}: you made a {roll}");
             result
                 .retval
                 .insert(format!("LaunchNumber-{launch_number}"), serde_value::Value::U8(roll));
@@ -69,7 +69,7 @@ impl TaskExec for DisplayScore {
             })
             .collect::<Vec<u16>>();
         Ok({
-            result.stdout = Some(format!("Your score is {}", score.iter().sum::<u16>()));
+            result.stdout = format!("Your score is {}", score.iter().sum::<u16>());
             result
         })
     }

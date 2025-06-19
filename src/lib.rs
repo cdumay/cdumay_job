@@ -89,7 +89,7 @@
 //!             Err(_) => "localhost".to_string(),
 //!         };
 //!         Ok({
-//!             result.stdout = Some(format!("Hello {} from {}", self.params().user, host));
+//!             result.stdout = format!("Hello {} from {}", self.params().user, host);
 //!             result
 //!         })
 //!     }
@@ -158,7 +158,7 @@
 //!         };
 //!
 //!         Ok({
-//!             result.stdout = Some(format!("Hello {} from {}", self.params().user, host));
+//!             result.stdout = format!("Hello {} from {}", self.params().user, host);
 //!             result
 //!         })
 //!     }

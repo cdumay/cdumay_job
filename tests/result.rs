@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test_result {
     use cdumay_core::Error;
-    use cdumay_error_standard::Unexpected;
+    use cdumay_error::Unexpected;
     use cdumay_job::{ResultBuilder, Result};
     use serde_value::Value;
     use std::collections::BTreeMap;
@@ -19,7 +19,7 @@ mod test_result {
             .into();
         let r1 = Result::from(err);
         assert_eq!(r1.is_error(), true);
-        assert_eq!(r1.stderr, Some("Unexpected error".to_string()))
+        assert_eq!(r1.stderr, "Unexpected error".to_string())
     }
 
     #[test]
@@ -36,7 +36,7 @@ mod test_result {
         assert_eq!(r1.is_error(), true);
         assert_eq!(
             format!("{}", r1),
-            "Err(1, stderr: Some(\"Something wrong!\"))".to_string()
+            "Err(1, stderr: \"Something wrong!\")".to_string()
         );
 
         let r2 = ResultBuilder::default()
@@ -49,7 +49,7 @@ mod test_result {
             .build();
         assert_eq!(
             format!("{}", r2),
-            "Ok(0, stdout: Some(\"Ok !\"))".to_string()
+            "Ok(0, stdout: \"Ok !\")".to_string()
         );
 
         let r3 = r1.add(&r2);
@@ -63,8 +63,8 @@ mod test_result {
         let r2 = ResultBuilder::default().stdout("Ok!".into()).build();
         let r3 = r1.add(&r2);
         assert_eq!(r3.is_error(), false);
-        assert_eq!(r3.stdout, Some("Ok!".to_string()));
-        assert_eq!(r3.stderr, None);
+        assert_eq!(r3.stdout, "Ok!".to_string());
+        assert_eq!(r3.stderr, "");
     }
     #[test]
     fn test_add_stderr() {
@@ -75,8 +75,8 @@ mod test_result {
         let r2 = ResultBuilder::default().stderr("Error!".into()).build();
         let r3 = r1.add(&r2);
         assert_eq!(r3.is_error(), true);
-        assert_eq!(r3.stdout, None);
-        assert_eq!(r3.stderr, Some("Error!".to_string()));
+        assert_eq!(r3.stdout, "");
+        assert_eq!(r3.stderr, "Error!".to_string());
     }
     #[test]
     fn test_ser() {
@@ -90,6 +90,6 @@ mod test_result {
             })
             .build();
         let out = format!("{}", serde_json::to_string(&Result::from(r1)).unwrap());
-        assert_eq!(out, "{\"uuid\":\"550e8400-e29b-41d4-a716-446655440000\",\"retcode\":0,\"stdout\":\"Ok!\",\"stderr\":null,\"retval\":{\"context\":\"Example\"}}".to_string())
+        assert_eq!(out, "{\"uuid\":\"550e8400-e29b-41d4-a716-446655440000\",\"retcode\":0,\"stdout\":\"Ok!\",\"stderr\":\"\",\"retval\":{\"context\":\"Example\"}}".to_string())
     }
 }

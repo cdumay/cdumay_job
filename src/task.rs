@@ -1,8 +1,7 @@
 use crate::Status;
 use log::{debug, error, info};
 use serde_value::Value;
-/// A trait that provides structured access to task-related metadata, parameters,
-/// execution status, and result handling.
+/// A trait that provides structured access to task-related metadata and parameters.
 ///
 /// This trait is designed to encapsulate a common interface for managing and
 /// tracking long-running or asynchronous tasks. It requires serialization and
@@ -65,6 +64,7 @@ pub trait TaskInfo {
     }
 }
 
+/// A trait that provides structured access to task-related execution status, and result handling.
 pub trait TaskExec: TaskInfo {
     fn entrypoint(&self) -> String {
         self.path()

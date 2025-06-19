@@ -39,7 +39,7 @@ use crate::ResultBuilder;
 /// Creating an error result from an error type:
 /// ```rust
 /// use cdumay_job::Result;
-/// use cdumay_error_standard::Unexpected;
+/// use cdumay_error::Unexpected;
 /// use cdumay_core::Error;
 ///
 /// let error: Error = Unexpected::new().with_message("Operation failed".into()).into();
@@ -51,8 +51,8 @@ use crate::ResultBuilder;
 pub struct Result {
     pub uuid: Uuid,
     pub retcode: u16,
-    pub stdout: Option<String>,
-    pub stderr: Option<String>,
+    pub stdout: String,
+    pub stderr: String,
     pub retval: BTreeMap<String, Value>,
 }
 
@@ -92,7 +92,7 @@ impl Add for &Result {
     ///     .build();
     ///
     /// let combined = &result1 + &result2;
-    /// assert_eq!(combined.stdout, Some("Second output".into()));
+    /// assert_eq!(combined.stdout, "Second output");
     /// ```
     fn add(self, other: &Result) -> Result {
         Result {
@@ -101,15 +101,15 @@ impl Add for &Result {
                 true => self.retcode,
                 false => other.retcode,
             },
-            stdout: match (self.stdout.clone(), other.stdout.clone()) {
-                (None, None) => None,
-                (Some(ref data), None) => Some(data.to_string()),
-                (_, Some(ref data)) => Some(data.to_string()),
+            stdout: match (self.stdout.as_str(), other.stdout.as_str()) {
+                ("", "") => "".to_string(),
+                (data, "") => data.to_string(),
+                (_, data) => data.to_string(),
             },
-            stderr: match (self.stderr.clone(), other.stderr.clone()) {
-                (None, None) => None,
-                (Some(ref data), None) => Some(data.to_string()),
-                (_, Some(ref data)) => Some(data.to_string()),
+            stderr: match (self.stderr.as_str(), other.stderr.as_str()) {
+                ("", "") => "".to_string(),
+                (data, "") => data.to_string(),
+                (_, data) => data.to_string(),
             },
             retval: {
                 let mut out = self.retval.clone();

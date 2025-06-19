@@ -14,7 +14,7 @@ mod test_result_builder {
                 extra
             })
             .build();
-        assert_eq!(result.stdout, Some("Test".to_string()));
+        assert_eq!(result.stdout, "Test".to_string());
         assert!(result.retval.contains_key("Hello"))
     }
 }

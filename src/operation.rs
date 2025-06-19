@@ -1,12 +1,13 @@
 use crate::{Status, TaskExec, TaskInfo};
 use cdumay_core::Error;
 use log::{debug, error, info};
-
+/// A trait that provides structured access to operation-related metadata and parameters.
 pub trait OperationInfo: TaskInfo {
     fn tasks(&self) -> &Vec<Box<dyn TaskExec>>;
     fn tasks_mut(&mut self) -> &mut Vec<Box<dyn TaskExec>>;
 }
 
+/// A trait that provides structured access to operation-related execution status, and result handling.
 pub trait OperationExec: OperationInfo {
     fn check_required_params(&mut self) -> cdumay_core::Result<crate::Result> {
         for task in self.tasks_mut() {
@@ -186,7 +187,7 @@ pub trait OperationExec: OperationInfo {
             None => match self.tasks().len() > 0 {
                 true => self.tasks()[0].send(result),
                 false => Ok({
-                    self.result_mut().stderr = Some("Nothing to do, empty operation !".to_string());
+                    self.result_mut().stderr = "Nothing to do, empty operation !".to_string();
                     self.result()
                 }),
             },
